@@ -1,6 +1,5 @@
-pub const sdl = @cImport({ @cInclude("SDL.h"); });
+const sdl = @cImport(@cInclude("SDL.h"));
 const std = @import("std");
-const math = @import("zlm/src/zlm-generic.zig").SpecializeOn(f32);
 const utils = @import("cm_utils.zig");
 const colors = @import("colors.zig");
 
@@ -18,7 +17,7 @@ pub const Canvas = struct {
     height: i32 = HEIGHT,
 };
 
-pub fn init_canvas(canvas: *Canvas) void {
+pub fn clear(canvas: *Canvas) void {
     var i: usize = 0;
     while(i < canvas.pixels.len) : (i += 1) {
         canvas.pixels[i] = colors.black();
@@ -44,6 +43,8 @@ pub fn present(canvas: *Canvas, window: *sdl.SDL_Window) void {
 
     _ = sdl.SDL_UnlockSurface(surface);
     _ = sdl.SDL_UpdateWindowSurface(window);
+
+    clear(canvas);
 }
 
 pub fn draw_pixel(x: i32, y: i32, color: colors.Color, canvas: *Canvas) void {
@@ -53,33 +54,32 @@ pub fn draw_pixel(x: i32, y: i32, color: colors.Color, canvas: *Canvas) void {
     canvas.pixels[@intCast(y * canvas.width + x)] = color;
 }
 
-pub fn draw_triangle(triangle: [3]math.Vec2, color: colors.Color, canvas: *Canvas) void {
-    _ = canvas;
-    _ = color;
-    // Coordinates
-    const y0: f32 = triangle[0].y;
-    const y1: f32 = triangle[1].y;
-    const y2: f32 = triangle[2].y;Vec3f(pts[2][0]-pts[0][0], pts[1][0]-pts[0][0], pts[0][0]-P[0])^Vec3f(pts[2][1]-pts[0][1], pts[1][1]-pts[0][1], pts[0][1]-P[1]);
-    const x0: f32 = triangle[0].x;
-    const x1: f32 = triangle[1].x;
-    const x2: f32 = triangle[2].x;
-    // Deltas
-    const dx_01 = x0 - x1;
-    _ = dx_01;
-    const dx_12 = x1 - x2;
-    _ = dx_12;
-    const dx_20 = x2 - x0;
-    _ = dx_20;
-    const dy_01 = y0 - y1;
-    _ = dy_01;
-    const dy_12 = y1 - y2;
-    _ = dy_12;
-    const dy_20 = y2 - y0;
-    _ = dy_20;
-    // Bounding rectangle
-    // TODO: Finish following tutorial from web.archive.org sourceforge archive
-    // Eventually they will do an integer only version, very exciting!
-    // Also, might as well take the time to actually read them over.
+pub fn draw_triangle(v0: [2]f32, v1: [2]f32, v2: [2]f32, color: colors.Color, canvas: *Canvas) void {
+    const x0: f32 = v0[0];
+    const x1: f32 = v1[0];
+    const x2: f32 = v2[0];
+    const y0: f32 = v0[1];
+    const y1: f32 = v1[1];
+    const y2: f32 = v2[1];
+    // Bounding rect
+    var xses: [3]f32 = .{ x0, x1, x2 };
+    var yses: [3]f32 = .{ y0, y1, y2 };
+    const xmin: f32 = (utils.min_in_array( f32, &xses));
+    const xmax: f32 = (utils.max_in_array( f32, &xses));
+    const ymin: f32 = (utils.min_in_array( f32, &yses));
+    const ymax: f32 = (utils.max_in_array( f32, &yses));
+
+    var py: f32 = ymin;
+    while(py < ymax) : (py += 1) {
+        var px: f32 = xmin;
+        while(px < xmax) : (px += 1) {
+            if((x0 - x1) * (py - y0) - (y0 - y1) * (px - x0) > 0 and
+               (x1 - x2) * (py - y1) - (y1 - y2) * (px - x1) > 0 and
+               (x2 - x0) * (py - y2) - (y2 - y0) * (px - x2) > 0) {
+                draw_pixel(@intFromFloat(px), @intFromFloat(py), color, canvas);
+            }
+        }
+    }
 }
 
 pub fn draw_line(xa: i32, ya: i32, xb: i32, yb: i32, color: colors.Color, canvas: *Canvas) void {

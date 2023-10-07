@@ -1,11 +1,10 @@
 const std = @import("std");
 const draw = @import("draw.zig");
-const sdl = draw.sdl;
+const sdl = @cImport(@cInclude("SDL.h"));
 const raster = @import("raster.zig");
 const utils = @import("cm_utils.zig");
 const colors = @import("colors.zig");
 const obj = @import("obj_loader.zig");
-const math = @import("zlm/src/zlm.zig").SpecializeOn(f32);
 
 pub fn main() !void {
     _ = sdl.SDL_Init(sdl.SDL_INIT_VIDEO);
@@ -18,14 +17,14 @@ pub fn main() !void {
     defer sdl.SDL_DestroyRenderer(renderer);
 
     var canvas: draw.Canvas = .{};
-    draw.init_canvas(&canvas);
+    draw.clear(&canvas);
 
     var allocator: std.mem.Allocator = std.heap.page_allocator;
     const model: obj.Model = try obj.loadFile(allocator, "head.obj");
 
-    var offset: math.Vec2 = .{ .x = 0, .y = 0 };
+    var offset: [2]f32 = .{ 300, 300 };
     loop: while (true) {
-        offset.x += 1;
+        offset[0] += 1;
         var event: sdl.SDL_Event = undefined;
         while (sdl.SDL_PollEvent(&event) != 0) {
             switch (event.type) {
