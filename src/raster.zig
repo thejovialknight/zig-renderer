@@ -7,40 +7,29 @@ const draw = @import("draw.zig");
 const colors = @import("colors.zig");
 const screen = @import("screen.zig");
 
-pub fn rasterize_model(model: *const obj.Model, canvas: *draw.Canvas, offset: [2]f32) void {
+pub fn rasterize_model(model: *const obj.Model, canvas: *draw.Canvas, offset: [2]f32, scale: [2]f32) void {
     const width: f32 = @floatFromInt(canvas.width);
     const height: f32 = @floatFromInt(canvas.height);
 
     var i: usize = 0;
     for(model.faces) |face| {
-        if(i > 1200) return;
+        if(i > 1000) return;
 
-        var triangle: [3][2]f32 = .{ .{ 0, 0 }, .{ 0, 0 }, .{ 0, 0 } };
-
-        var normal: f_math.Vec3 = model.normals[i];
-        normal = f_math.Vec3.normalize(normal);
-
-        if(normal.x < 0) normal.x = 0;
-        if(normal.y < 0) normal.y = 0;
-        if(normal.z < 0) normal.z = 0;
-
-        var color: colors.Color = .{ 
-            .r = @intFromFloat(normal.x * 255), 
-            .g = @intFromFloat(normal.y * 255),
-            .b = @intFromFloat(normal.z * 255),
-            .a = 255,
-        };
+        var screen_coords: [3][2]f32 = .{ .{ 0, 0 }, .{ 0, 0 }, .{ 0, 0 } };
+        var world_coords: [3][2]f32 = .{ .{ 0, 0 }, .{ 0, 0 }, .{ 0, 0 } };
 
         for(0..3) |j| {
-            const corner: f_math.Vec4 = model.positions[face.vertices[j].position];
-            triangle[j] = .{ (corner.x) * width + offset[0], (corner.y) * height + offset[1]};
+            const v: f_math.Vec4 = model.positions[face.vertices[j].position];
+            screen_coords[j] = .{ (v.x) * width * scale[0] + offset[0], (v.y) * height * scale[1] + offset[1]};
+            world_coords[j] = .{ v.x, v.y };
         }
 
-        const v0: [2]f32 = triangle[0];
-        const v1: [2]f32 = triangle[1];
-        const v2: [2]f32 = triangle[2];
+        const v0: [2]f32 = screen_coords[0];
+        const v1: [2]f32 = screen_coords[1];
+        const v2: [2]f32 = screen_coords[2];
         
-        draw.draw_triangle(v0, v1, v2, color, canvas);
+        const color: colors.Color = .{ .r = 250, .g = 250, .b = 250, .a = 250 };
+        draw.draw_triangle_wire(v0, v1, v2, color, canvas);
         i += 1;
     }
 }

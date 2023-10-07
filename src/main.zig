@@ -13,6 +13,8 @@ pub fn main() !void {
     var window: *sdl.SDL_Window = sdl.SDL_CreateWindow("SDL Test", sdl.SDL_WINDOWPOS_CENTERED, sdl.SDL_WINDOWPOS_CENTERED, draw.WIDTH, draw.HEIGHT, 0).?;
     defer sdl.SDL_DestroyWindow(window);
 
+    var surface: *sdl.SDL_Surface = sdl.SDL_GetWindowSurface(window);
+
     var renderer: *sdl.SDL_Renderer = sdl.SDL_CreateRenderer(window, 0, sdl.SDL_RENDERER_PRESENTVSYNC).?;
     defer sdl.SDL_DestroyRenderer(renderer);
 
@@ -20,11 +22,12 @@ pub fn main() !void {
     draw.clear(&canvas, colors.black());
 
     var allocator: std.mem.Allocator = std.heap.page_allocator;
-    const model: obj.Model = try obj.loadFile(allocator, "head.obj");
+    const model: obj.Model = try obj.loadFile(allocator, "column.obj");
 
-    var offset: [2]f32 = .{ 300, 300 };
+    var offset: [2]f32 = .{ 800, 600 };
+    var scale: [2]f32 = .{ 0.1, -0.1 };
     loop: while (true) {
-        offset[0] += 3;
+        offset[0] += 0;
         var event: sdl.SDL_Event = undefined;
         while (sdl.SDL_PollEvent(&event) != 0) {
             switch (event.type) {
@@ -33,7 +36,7 @@ pub fn main() !void {
             }
         }
 
-        raster.rasterize_model(&model, &canvas, offset);
-        draw.present(&canvas, window);
+        raster.rasterize_model(&model, &canvas, offset, scale);
+        draw.present(&canvas, window, surface);
     }
 }
