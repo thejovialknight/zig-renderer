@@ -17,14 +17,14 @@ pub fn main() !void {
     defer sdl.SDL_DestroyRenderer(renderer);
 
     var canvas: draw.Canvas = .{};
-    draw.clear(&canvas);
+    draw.clear(&canvas, colors.black());
 
     var allocator: std.mem.Allocator = std.heap.page_allocator;
     const model: obj.Model = try obj.loadFile(allocator, "head.obj");
 
     var offset: [2]f32 = .{ 300, 300 };
     loop: while (true) {
-        offset[0] += 1;
+        offset[0] += 3;
         var event: sdl.SDL_Event = undefined;
         while (sdl.SDL_PollEvent(&event) != 0) {
             switch (event.type) {
