@@ -62,12 +62,12 @@ pub fn draw_triangle(v0: [2]f32, v1: [2]f32, v2: [2]f32, color: colors.Color, ca
     const y1: f32 = v1[1];
     const y2: f32 = v2[1];
     // Bounding rect
-    var xses: [3]f32 = .{ x0, x1, x2 };
-    var yses: [3]f32 = .{ y0, y1, y2 };
-    const xmin: f32 = (utils.min_in_array( f32, &xses));
-    const xmax: f32 = (utils.max_in_array( f32, &xses));
-    const ymin: f32 = (utils.min_in_array( f32, &yses));
-    const ymax: f32 = (utils.max_in_array( f32, &yses));
+    var xvals: [3]f32 = .{ x0, x1, x2 }; // Declaration because min_in_array and max_...
+    var yvals: [3]f32 = .{ y0, y1, y2 }; // require already initialized array
+    const xmin: f32 = (utils.min_in_array( f32, &xvals));
+    const xmax: f32 = (utils.max_in_array( f32, &xvals));
+    const ymin: f32 = (utils.min_in_array( f32, &yvals));
+    const ymax: f32 = (utils.max_in_array( f32, &yvals));
 
     var py: f32 = ymin;
     while(py < ymax) : (py += 1) {
