@@ -47,3 +47,17 @@ pub fn abs(comptime T: type, n: T) T {
     if(n > 0) return n;
     return -n;
 }
+
+pub fn multmat_44_4(comptime T: type, m0: [4][4]f32, m1: [4]f32) [4]T {
+    var result: [4]T = undefined;
+    var i: usize = 0;
+    while(i < 4) : (i += 1) {
+        var sum: T = 0;
+        var j: usize = 0;
+        while(j < 4) : (j += 1) {
+            sum += m0[i][j] * m1[j];
+        }
+        result[i] = sum;
+    }
+    return result;
+}

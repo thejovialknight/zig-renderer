@@ -24,10 +24,13 @@ pub fn main() !void {
     var allocator: std.mem.Allocator = std.heap.page_allocator;
     const model: obj.Model = try obj.loadFile(allocator, "column.obj");
 
-    var offset: [2]f32 = .{ 800, 600 };
-    var scale: [2]f32 = .{ 0.1, -0.1 };
+    var offset: [3]f32 = .{ 0, 0, 0 };
+    var scale: [3]f32 = .{ 0.09, -0.09, 0.09 };
     loop: while (true) {
         offset[0] += 0;
+
+        for(&scale) |*s| s.* *= 1.005;
+
         var event: sdl.SDL_Event = undefined;
         while (sdl.SDL_PollEvent(&event) != 0) {
             switch (event.type) {
@@ -36,7 +39,7 @@ pub fn main() !void {
             }
         }
 
-        raster.rasterize_model(&model, &canvas, offset, scale);
+        raster.rasterize_model(&model, &canvas, offset, scale, raster.Projection.Perspective);
         draw.present(&canvas, window, surface);
     }
 }
