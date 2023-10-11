@@ -5,6 +5,7 @@ const raster = @import("raster.zig");
 const utils = @import("cm_utils.zig");
 const colors = @import("colors.zig");
 const obj = @import("obj_loader.zig");
+const mesh = @import("mesh.zig");
 
 pub fn main() !void {
     _ = sdl.SDL_Init(sdl.SDL_INIT_VIDEO);
@@ -21,8 +22,12 @@ pub fn main() !void {
     var canvas: draw.Canvas = .{};
     draw.clear(&canvas, colors.black());
 
-    var allocator: std.mem.Allocator = std.heap.page_allocator;
-    const model: obj.Model = try obj.loadFile(allocator, "column.obj");
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    var allocator: std.mem.Allocator = arena.allocator(); 
+    defer arena.deinit();
+
+    const my_model: obj.Model = try obj.loadFile(allocator, "column.obj");
+    const my_mesh: mesh.Mesh = try mesh.load_mesh(&my_model, allocator);
 
     var offset: [3]f32 = .{ 0, 0, 0 };
     var scale: [3]f32 = .{ 0.09, -0.09, 0.09 };
@@ -39,7 +44,7 @@ pub fn main() !void {
             }
         }
 
-        raster.rasterize_model(&model, &canvas, offset, scale, raster.Projection.Perspective);
+        raster.rasterize_mesh(&my_mesh, &canvas, offset, scale, raster.Projection.Perspective);
         draw.present(&canvas, window, surface);
     }
 }

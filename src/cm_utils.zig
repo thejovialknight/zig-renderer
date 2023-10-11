@@ -48,6 +48,20 @@ pub fn abs(comptime T: type, n: T) T {
     return -n;
 }
 
+pub fn v3_dot(comptime T: type, v0: [3]T, v1: [3]T) T {
+    return v0[0] * v1[0] + 
+           v0[1] * v1[1] + 
+           v0[2] * v1[2];
+}
+
+pub fn v3_sub(comptime T: type, v0: [3]T, v1: [3]T) [3]T {
+    return .{ 
+        v0[0] - v1[0],
+        v0[1] - v1[1],
+        v0[2] - v1[2]
+    };
+}
+
 pub fn multmat_44_4(comptime T: type, m0: [4][4]f32, m1: [4]f32) [4]T {
     var result: [4]T = undefined;
     var i: usize = 0;
