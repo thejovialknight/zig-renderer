@@ -10,13 +10,13 @@ const obj = @import("obj_loader.zig");
 // DATA
 
 pub const Mesh = struct {
-    tris: [][3][3]f32 = undefined
+    tris: [][3]@Vector(3, f32) = undefined,
 };
 
 // FUNCTIONS
 
 pub fn load_mesh(model: *const obj.Model, allocator: Allocator) !Mesh {
-    const memory = try allocator.alloc([3][3]f32, model.faces.len);
+    const memory = try allocator.alloc([3]@Vector(3, f32), model.faces.len);
     var mesh: Mesh = .{ .tris = memory };
 
     for(0..model.faces.len) |i| {

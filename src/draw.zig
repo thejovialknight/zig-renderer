@@ -7,17 +7,17 @@ const colors = @import("colors.zig");
 //       This would just require a slight refactor, as when it becomes needed, there will
 //       only be once canvas initialized anyway.
 
-pub const WIDTH: i32 = 640;
-pub const HEIGHT: i32 = 640;
+pub const WIDTH: i32 = 1280;
+pub const HEIGHT: i32 = 1280;
 const CANVAS_NUM_PIXELS: u32 = WIDTH * HEIGHT;
 
 pub const Canvas = struct {
-    pixels: [CANVAS_NUM_PIXELS]colors.Color = undefined,
+    pixels: [CANVAS_NUM_PIXELS]@Vector(4, u8) = undefined,
     width: i32 = WIDTH,
     height: i32 = HEIGHT,
 };
 
-pub fn clear(canvas: *Canvas, color: colors.Color) void {
+pub fn clear(canvas: *Canvas, color: @Vector(4, u8)) void {
     var i: usize = 0;
     while(i < canvas.pixels.len) : (i += 1) {
         canvas.pixels[i] = color;
@@ -32,8 +32,8 @@ pub fn present(canvas: *Canvas, window: *sdl.SDL_Window, surface: *sdl.SDL_Surfa
         var x: i32 = 0;
         while(x < canvas.height) : (x += 1) {
             var pixel_index: usize = @intCast(y * canvas.width + x);
-            var c: colors.Color = canvas.pixels[pixel_index];
-            var sdl_color: u32 = sdl.SDL_MapRGBA(surface.format, c.r, c.g, c.b, c.a);
+            var c: @Vector(4, u8) = canvas.pixels[pixel_index];
+            var sdl_color: u32 = sdl.SDL_MapRGBA(surface.format, c[0], c[1], c[2], c[3]);
 
             var surface_pointer: [*]u32 = @ptrCast(@alignCast(surface.*.pixels)); // cast c pointer to [*]u32
             surface_pointer[pixel_index] = sdl_color;
@@ -43,16 +43,16 @@ pub fn present(canvas: *Canvas, window: *sdl.SDL_Window, surface: *sdl.SDL_Surfa
     _ = sdl.SDL_UnlockSurface(surface);
     _ = sdl.SDL_UpdateWindowSurface(window);
 
-    clear(canvas, colors.black());
+    clear(canvas, colors.blue());
 }
 
-pub fn draw_pixel(x: i32, y: i32, color: colors.Color, canvas: *Canvas) void {
+pub fn draw_pixel(x: i32, y: i32, color: @Vector(4, u8), canvas: *Canvas) void {
     if(x < 0 or y < 0 or x >= canvas.width or y >= canvas.height) return;
 
     canvas.pixels[@intCast(y * canvas.width + x)] = color;
 }
 
-pub fn draw_triangle_wire(v0: [2]f32, v1: [2]f32, v2: [2]f32, color: colors.Color, canvas: *Canvas) void {
+pub fn draw_triangle_wire(v0: [2]f32, v1: [2]f32, v2: [2]f32, color: @Vector(4, u8), canvas: *Canvas) void {
     const x0: i32 = @intFromFloat(v0[0]);
     const x1: i32 = @intFromFloat(v1[0]);
     const x2: i32 = @intFromFloat(v2[0]);
@@ -65,7 +65,7 @@ pub fn draw_triangle_wire(v0: [2]f32, v1: [2]f32, v2: [2]f32, color: colors.Colo
     draw_line(x2, y2, x0, y0, color, canvas);
 }
 
-pub fn draw_line(xa: i32, ya: i32, xb: i32, yb: i32, color: colors.Color, canvas: *Canvas) void {
+pub fn draw_line(xa: i32, ya: i32, xb: i32, yb: i32, color: @Vector(4, u8), canvas: *Canvas) void {
     var x1 = xa;
     var y1 = ya;
     var x2 = xb;

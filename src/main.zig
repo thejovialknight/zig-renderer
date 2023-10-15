@@ -29,12 +29,12 @@ pub fn main() !void {
     const my_model: obj.Model = try obj.loadFile(allocator, "column.obj");
     const my_mesh: mesh.Mesh = try mesh.load_mesh(&my_model, allocator);
 
-    var offset: [3]f32 = .{ 0, 0, 0 };
-    var scale: [3]f32 = .{ 0.09, -0.09, 0.09 };
+    var offset: @Vector(3, f32) = .{ 0, 0, 0 };
+    var scale: @Vector(3, f32)= .{ 0.09, -0.09, 0.09 };
     loop: while (true) {
         offset[0] += 0;
 
-        for(&scale) |*s| s.* *= 1.005;
+        scale *= @splat(1.005);
 
         var event: sdl.SDL_Event = undefined;
         while (sdl.SDL_PollEvent(&event) != 0) {
