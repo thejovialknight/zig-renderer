@@ -18,8 +18,33 @@ pub const Projection = enum {
 };
 
 pub fn render_world(world: *World, canvas: *draw.Canvas) void {
+    // TODO: Define matrix for camera
+    //
+    // From online documentation, it seems like the basic idea
+    // is that we have a camera with a pos and rot, and we
+    // calculate a world transform from it (meaning we will
+    // have to factor out the world transformation calcs
+    // here)
+    //
+    // The world transform is going to be the same calculations
+    // as the ones used below, but using the inverse pos and rot
+    //
+    // When each mesh's world transform is calculated it will be
+    // the calculated matrix below multiplied by the camera matrix
+    // we calculate up here
+    //
+    // I'm thinking this function will be less
+    // lines rather than more by the end, seeing as the transform
+    // will be factored out
+    //
+    // A remaining question is how exactly to factor out the scale
+    // transform. Should be easy to answer with just a few seconds
+    // thought
+
     for(0..world.meshes_num) |mesh_index| {
         const mesh: *Mesh = &world.meshes[mesh_index];
+
+        // Calculate view matrix
         const trans_mat: [4][4]f32 = .{
             .{ 1, 0, 0, mesh.pos[0] },
             .{ 0, 1, 0, mesh.pos[1] },
@@ -63,6 +88,7 @@ pub fn render_world(world: *World, canvas: *draw.Canvas) void {
         const rottrans_mat: [4][4]f32 = utils.multmat_44_44(f32, &trans_mat, &rot_mat);
         const transform_mat: [4][4]f32 = utils.multmat_44_44(f32, &rottrans_mat, &scale_mat);
 
+        // Render triangles
         for(mesh.tris) |tri_loc| { // triangle_local space
             var tri_world: [3]@Vector(3, f32) = undefined;
             var i: usize = 0;

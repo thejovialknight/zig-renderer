@@ -32,7 +32,9 @@ pub fn main() !void {
     world.meshes[0].pos = .{ 0, 0, -10 };
 
     loop: while (true) {
+        world.meshes[0].rot[0] += 0.05;
         world.meshes[0].rot[1] += 0.05;
+        world.meshes[0].rot[2] += 0.05;
         var event: sdl.SDL_Event = undefined;
         while (sdl.SDL_PollEvent(&event) != 0) {
             switch (event.type) {
