@@ -11,6 +11,9 @@ const obj = @import("obj_loader.zig");
 
 pub const Mesh = struct {
     tris: [][3]@Vector(3, f32) = undefined,
+    pos: @Vector(3, f32) = .{ 0, 0, 0 },
+    rot: @Vector(4, f32) = .{ 0, 0, 0, 0 },
+    scale: @Vector(3, f32) = .{ 1, -1, 1 }
 };
 
 // FUNCTIONS
@@ -25,7 +28,6 @@ pub fn load_mesh(model: *const obj.Model, allocator: Allocator) !Mesh {
             mesh.tris[i][j] = .{ v.x, v.y, v.z };
         }
     }
-
     std.debug.print("{}\n", .{mesh.tris.len});
     std.debug.print("{}\n", .{model.faces.len});
     return mesh;

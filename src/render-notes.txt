@@ -2,4 +2,6 @@
 NOTES ON RENDERING
 ******************
 
+The object can keep a position p[3] and rotation r[4].
 
+Then, at render time, we use a 4x4 world matrix which will use p and r. We multiply this by the local vertex coordinates and get our world coordinates. Remember, this is us transforming the position of a particular vertex in local (mesh) space so that it is now in world space. THIS RIGHT HERE IS HOW THAT WORKS.

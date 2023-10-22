@@ -4,6 +4,7 @@ const i_math = @import("zlm/src/zlm-generic.zig").SpecializeOn(i32);
 const f_math = @import("zlm/src/zlm-generic.zig").SpecializeOn(f32);
 
 const Mesh = @import("mesh.zig").Mesh;
+const World = @import("world.zig").World;
 
 const draw = @import("draw.zig");
 const colors = @import("colors.zig");
@@ -16,50 +17,106 @@ pub const Projection = enum {
     Orthogonal
 };
 
+pub fn render_world(world: *World, canvas: *draw.Canvas) void {
+    for(0..world.meshes_num) |mesh_index| {
+        const mesh: *Mesh = &world.meshes[mesh_index];
+        const trans_mat: [4][4]f32 = .{
+            .{ 1, 0, 0, mesh.pos[0] },
+            .{ 0, 1, 0, mesh.pos[1] },
+            .{ 0, 0, 1, mesh.pos[2] },
+            .{ 0, 0, 0, 1 },
+        };
+        const scale_mat: [4][4]f32 = .{
+            .{ mesh.scale[0], 0, 0, 0 },
+            .{ 0, mesh.scale[1], 0, 0 },
+            .{ 0, 0, mesh.scale[2], 0 },
+            .{ 0, 0, 0, 1 },
+        };
+
+        const cos_rx: f32 = @cos(mesh.rot[0]);
+        const sin_rx: f32 = @sin(mesh.rot[0]);
+        const cos_ry: f32 = @cos(mesh.rot[1]);
+        const sin_ry: f32 = @sin(mesh.rot[1]);
+        const cos_rz: f32 = @cos(mesh.rot[2]);
+        const sin_rz: f32 = @sin(mesh.rot[2]);
+
+        const xr_mat: [4][4]f32 = .{
+            .{ 1, 0, 0, 0 },
+            .{ 0, cos_rx, -sin_rx, 0 },
+            .{ 0, sin_rx, cos_rx, 0 },
+            .{ 0, 0, 0, 1 }
+        };
+        const yr_mat: [4][4]f32 = .{
+            .{ cos_ry, 0, sin_ry, 0 },
+            .{ 0, 1, 0, 0 },
+            .{ -sin_ry, 0, cos_ry, 0 },
+            .{ 0, 0, 0, 1 }
+        };
+        const zr_mat: [4][4]f32 = .{
+            .{ cos_rz, -sin_rz, 0, 0 },
+            .{ sin_rz, cos_rz, 0, 0 },
+            .{ 0, 0, 1, 0 },
+            .{ 0, 0, 0, 1 }
+        };
+        const yrzr_mat: [4][4]f32 = utils.multmat_44_44(f32, &yr_mat, &zr_mat);
+        const rot_mat: [4][4]f32 = utils.multmat_44_44(f32, &xr_mat, &yrzr_mat);
+        const rottrans_mat: [4][4]f32 = utils.multmat_44_44(f32, &trans_mat, &rot_mat);
+        const transform_mat: [4][4]f32 = utils.multmat_44_44(f32, &rottrans_mat, &scale_mat);
+
+        for(mesh.tris) |tri_loc| { // triangle_local space
+            var tri_world: [3]@Vector(3, f32) = undefined;
+            var i: usize = 0;
+            while(i < 3) : (i += 1) {
+                tri_world[i] = utils.multmat_44_3(f32, &transform_mat, &tri_loc[i]);
+            }
+            render_triangle(&tri_world, canvas);
+        }
+    }
+}
+
 // FUNCTIONS 
-pub fn rasterize_mesh(mesh: *const Mesh, canvas: *draw.Canvas, offset: @Vector(3, f32), scale: @Vector(3, f32), projection: Projection) void {
-    const width: f32 = @floatFromInt(canvas.width);
-    const height: f32 = @floatFromInt(canvas.height);
-    const aspect: f32 = height / width;
-    const aspect_scalar: @Vector(3, f32) = @splat(aspect);
+pub fn render_triangle(triangle: *[3]@Vector(3, f32), canvas: *draw.Canvas) void {
+    const projection: Projection = Projection.Perspective;
     const fov: f32 = 1.5; // radians
     const znear: f32 = 0.1;
     const zfar: f32 = 100;
 
-    for(mesh.tris) |t| {
-        var screen_coords: [3]@Vector(3, f32) = .{ .{ 0, 0, 0 }, .{ 0, 0, 0 }, .{ 0, 0, 0 } };
+    const width: f32 = @floatFromInt(canvas.width);
+    const height: f32 = @floatFromInt(canvas.height);
+    const aspect: f32 = height / width;
+    const aspect_scalar: @Vector(3, f32) = @splat(aspect);
 
-        for(0..3) |j| {
-            const world_pos: @Vector(3, f32) = t[j] * scale + offset;
-            
-            var norm_device_pos: @Vector(3, f32) = .{ 0, 0, 0 };
-            if(projection == Projection.Orthogonal) {   
-                norm_device_pos = world_pos * aspect_scalar;
-            }
-            else {
-                const proj_mat: [4]@Vector(4, f32) = .{
-                    .{ 1 / (@tan(fov / 2) * aspect), 0, 0, 0 },
-                    .{ 0, 1 / @tan(fov / 2), 0, 0 },
-                    .{ 0, 0, (zfar + znear) / (znear - zfar), -1 },
-                    .{ 0, 0, (znear * zfar * 2) / (znear - zfar), 0}
-                };
-
-                const world_pos_mat: @Vector(4, f32) = .{ world_pos[0], world_pos[1], world_pos[2], 1 };
-                const clip: @Vector(4, f32) = utils.multmat_44_4(f32, proj_mat, world_pos_mat);
-                norm_device_pos[0] = clip[0] / clip[2];
-                norm_device_pos[1] = clip[1] / clip[2];
-                norm_device_pos[2] = clip[2] / clip[2];
-            }
-
-            screen_coords[j] = .{ 
-                (norm_device_pos[0] + 1) * width / 2, 
-                (norm_device_pos[1] + 1) * height / 2,
-                norm_device_pos[2]
+    var screen_coords: [3]@Vector(3, f32) = .{ .{ 0, 0, 0 }, .{ 0, 0, 0 }, .{ 0, 0, 0 } };
+    for(0..3) |j| {
+        const world_pos: @Vector(3, f32) = triangle[j];
+        
+        var norm_device_pos: @Vector(3, f32) = .{ 0, 0, 0 };
+        if(projection == Projection.Orthogonal) {   
+            norm_device_pos = world_pos * aspect_scalar;
+        }
+        else {
+            const proj_mat: [4]@Vector(4, f32) = .{
+                .{ 1 / (@tan(fov / 2) * aspect), 0, 0, 0 },
+                .{ 0, 1 / @tan(fov / 2), 0, 0 },
+                .{ 0, 0, (zfar + znear) / (znear - zfar), -1 },
+                .{ 0, 0, (znear * zfar * 2) / (znear - zfar), 0}
             };
+
+            const world_pos_mat: @Vector(4, f32) = .{ world_pos[0], world_pos[1], world_pos[2], 1 };
+            const clip: @Vector(4, f32) = utils.multmat_44_4(f32, &proj_mat, &world_pos_mat);
+            norm_device_pos[0] = clip[0] / clip[2];
+            norm_device_pos[1] = clip[1] / clip[2];
+            norm_device_pos[2] = clip[2] / clip[2];
         }
 
-        rasterize_triangle(screen_coords, canvas);
+        screen_coords[j] = .{ 
+            (norm_device_pos[0] + 1) * width / 2, 
+            (norm_device_pos[1] + 1) * height / 2,
+            norm_device_pos[2]
+        };
     }
+
+    rasterize_triangle(screen_coords, canvas);
 }
 
 pub fn rasterize_triangle(coords: [3]@Vector(3, f32), canvas: *draw.Canvas) void {

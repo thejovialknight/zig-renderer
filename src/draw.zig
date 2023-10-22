@@ -7,8 +7,8 @@ const colors = @import("colors.zig");
 //       This would just require a slight refactor, as when it becomes needed, there will
 //       only be once canvas initialized anyway.
 
-pub const WIDTH: i32 = 1280;
-pub const HEIGHT: i32 = 1280;
+pub const WIDTH: i32 = 1000;
+pub const HEIGHT: i32 = 1000;
 const CANVAS_NUM_PIXELS: u32 = WIDTH * HEIGHT;
 
 pub const Canvas = struct {
@@ -22,11 +22,12 @@ pub fn clear(canvas: *Canvas, color: @Vector(4, u8)) void {
     while(i < canvas.pixels.len) : (i += 1) {
         canvas.pixels[i] = color;
     }
+
+    return;
 }
 
 pub fn present(canvas: *Canvas, window: *sdl.SDL_Window, surface: *sdl.SDL_Surface) void {
     _ = sdl.SDL_LockSurface(surface);
-
     var y: i32 = 0;
     while(y < canvas.height) : (y += 1) {
         var x: i32 = 0;
@@ -43,7 +44,7 @@ pub fn present(canvas: *Canvas, window: *sdl.SDL_Window, surface: *sdl.SDL_Surfa
     _ = sdl.SDL_UnlockSurface(surface);
     _ = sdl.SDL_UpdateWindowSurface(window);
 
-    clear(canvas, colors.blue());
+    clear(canvas, colors.black());
 }
 
 pub fn draw_pixel(x: i32, y: i32, color: @Vector(4, u8), canvas: *Canvas) void {

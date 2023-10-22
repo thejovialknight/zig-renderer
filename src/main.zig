@@ -6,6 +6,7 @@ const utils = @import("cm_utils.zig");
 const colors = @import("colors.zig");
 const obj = @import("obj_loader.zig");
 const mesh = @import("mesh.zig");
+const World = @import("world.zig").World;
 
 pub fn main() !void {
     _ = sdl.SDL_Init(sdl.SDL_INIT_VIDEO);
@@ -26,16 +27,12 @@ pub fn main() !void {
     var allocator: std.mem.Allocator = arena.allocator(); 
     defer arena.deinit();
 
-    const my_model: obj.Model = try obj.loadFile(allocator, "column.obj");
-    const my_mesh: mesh.Mesh = try mesh.load_mesh(&my_model, allocator);
+    const model: obj.Model = try obj.loadFile(allocator, "column.obj");
+    var world: World = .{ .meshes = .{ try mesh.load_mesh(&model, allocator) } };
+    world.meshes[0].pos = .{ 0, 0, -10 };
 
-    var offset: @Vector(3, f32) = .{ 0, 0, 0 };
-    var scale: @Vector(3, f32)= .{ 0.09, -0.09, 0.09 };
     loop: while (true) {
-        offset[0] += 0;
-
-        scale *= @splat(1.005);
-
+        world.meshes[0].rot[1] += 0.05;
         var event: sdl.SDL_Event = undefined;
         while (sdl.SDL_PollEvent(&event) != 0) {
             switch (event.type) {
@@ -44,7 +41,7 @@ pub fn main() !void {
             }
         }
 
-        raster.rasterize_mesh(&my_mesh, &canvas, offset, scale, raster.Projection.Perspective);
+        raster.render_world(&world, &canvas);
         draw.present(&canvas, window, surface);
     }
 }
