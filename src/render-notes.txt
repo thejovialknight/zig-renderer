@@ -5,3 +5,28 @@ NOTES ON RENDERING
 The object can keep a position p[3] and rotation r[4].
 
 Then, at render time, we use a 4x4 world matrix which will use p and r. We multiply this by the local vertex coordinates and get our world coordinates. Remember, this is us transforming the position of a particular vertex in local (mesh) space so that it is now in world space. THIS RIGHT HERE IS HOW THAT WORKS.
+
+- The camera rotations work perfectly (as far as I can tell) when pos is at origin.
+- This strikes me as quite interesting. This means we need the rotation part of the algorithm (either during frame logic or render logic) to think that it is at the origin.
+- The effect the rotation has on the position also seems to work on the same rule.
+- I think it has to do with the final return statement in the forward (and by extension right) function. The rotation is a rotation of local_forward.---
+- Actually, you know what? Position isn't even taken into account during this function, so it must not be returning a value that is varying in that way. Therefore, it must be somewhere else tat is going wrong. Perhaps where forward is called?
+- Wait, I've been mixing up my rotation and translation thinking. We are trying to investigate rotations right now.
+
+************
+AN INTUITION
+************
+
+An incredible intuitive moment. Realizing that the reason the camera was working while unbenownest to me the model was not is because I had been having the inverse problem with the camera before I switched the world transform function to first translate, and then rotate. Because the model didn't rotate, the function was doing the equivalent thing as if the function had been switched around. However, the camera started working, because it was supposed to translate + rotate all along.
+
+***********
+A GAME IDEA
+***********
+
+A game where you plug different cords into different ports in order to change the order and values of all sorts of different matrices. This literally changes the view to match the new math. How to make this directly feed the gameplay? Interesting question, there would have to be plenty of overlap between the rendering system and the gameplay system. In fact, the game is really about mixing rendering and gameplay code together at its core.
+
+*****************
+ANOTHER GAME IDEA
+*****************
+
+A pathtracer so low resolution that we just have large particles that make up objects, and they flicker in and out of existence as the pathtracer either hits them or doesn't. It is all very beautiful. The game becomes a crazy thing of like "whoa bro is this even 3d or is this just a wild adaptation of some strange reflection of rulial space? A simulation, a world inside the machine.

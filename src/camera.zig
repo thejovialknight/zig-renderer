@@ -25,7 +25,7 @@ pub fn forward(camera: *Camera) @Vector(3, f32) {
     // TODO: the step from a transform to a position can maybe be factored out of
     // the raster function 
     const rotation: [4][4]f32 = raster.get_world_transform(
-        @Vector(3, f32){ 0, 0, 0 },
+        @Vector(3, f32){ 0, 0, 1 },
         @Vector(4, f32){ camera.pitch, camera.yaw, 0, 1 },
         .{ 1, 1, 1 }
     );

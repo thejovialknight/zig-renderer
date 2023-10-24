@@ -47,7 +47,7 @@ pub fn main() !void {
 
     const model: obj.Model = try obj.loadFile(allocator, "column.obj");
     var world: World = .{ .meshes = .{ try mesh.load_mesh(&model, allocator) } };
-    world.meshes[0].pos = .{ 0, 0, -10 };
+    world.meshes[0].pos = .{ 0, 0, -5 };
 
     const cam_speed_scalar: @Vector(3, f32) = @splat(0.1);
     const cam_rot_speed: f32 = 0.033;
@@ -64,6 +64,7 @@ pub fn main() !void {
         //world.meshes[0].rot[0] += 0.05;
         //world.meshes[0].rot[1] += 0.05;
         //world.meshes[0].rot[2] += 0.05;
+        //world.meshes[0].pos[2] += 0.05;
 
         var event: sdl.SDL_Event = undefined;
         while (sdl.SDL_PollEvent(&event) != 0) {
