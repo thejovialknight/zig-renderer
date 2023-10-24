@@ -18,89 +18,84 @@ pub const Projection = enum {
 };
 
 pub fn render_world(world: *World, canvas: *draw.Canvas) void {
-    // TODO: Define matrix for camera
-    //
-    // From online documentation, it seems like the basic idea
-    // is that we have a camera with a pos and rot, and we
-    // calculate a world transform from it (meaning we will
-    // have to factor out the world transformation calcs
-    // here)
-    //
-    // The world transform is going to be the same calculations
-    // as the ones used below, but using the inverse pos and rot
-    //
-    // When each mesh's world transform is calculated it will be
-    // the calculated matrix below multiplied by the camera matrix
-    // we calculate up here
-    //
-    // I'm thinking this function will be less
-    // lines rather than more by the end, seeing as the transform
-    // will be factored out
-    //
-    // A remaining question is how exactly to factor out the scale
-    // transform. Should be easy to answer with just a few seconds
-    // thought
+    // Calculate view transform
+    const invert_scalar_3: @Vector(3, f32) = @splat(-1);
+    const invert_scalar_4: @Vector(4, f32) = @splat(-1);
+    const cam_transform: [4][4]f32 = get_world_transform(
+        world.camera.pos * invert_scalar_3, 
+        @Vector(4, f32){ world.camera.pitch, world.camera.yaw, 0, 1 } * invert_scalar_4, 
+        .{ 1, 1, 1 }
+    );
 
+    // Render meshes
     for(0..world.meshes_num) |mesh_index| {
         const mesh: *Mesh = &world.meshes[mesh_index];
-
-        // Calculate view matrix
-        const trans_mat: [4][4]f32 = .{
-            .{ 1, 0, 0, mesh.pos[0] },
-            .{ 0, 1, 0, mesh.pos[1] },
-            .{ 0, 0, 1, mesh.pos[2] },
-            .{ 0, 0, 0, 1 },
-        };
-        const scale_mat: [4][4]f32 = .{
-            .{ mesh.scale[0], 0, 0, 0 },
-            .{ 0, mesh.scale[1], 0, 0 },
-            .{ 0, 0, mesh.scale[2], 0 },
-            .{ 0, 0, 0, 1 },
-        };
-
-        const cos_rx: f32 = @cos(mesh.rot[0]);
-        const sin_rx: f32 = @sin(mesh.rot[0]);
-        const cos_ry: f32 = @cos(mesh.rot[1]);
-        const sin_ry: f32 = @sin(mesh.rot[1]);
-        const cos_rz: f32 = @cos(mesh.rot[2]);
-        const sin_rz: f32 = @sin(mesh.rot[2]);
-
-        const xr_mat: [4][4]f32 = .{
-            .{ 1, 0, 0, 0 },
-            .{ 0, cos_rx, -sin_rx, 0 },
-            .{ 0, sin_rx, cos_rx, 0 },
-            .{ 0, 0, 0, 1 }
-        };
-        const yr_mat: [4][4]f32 = .{
-            .{ cos_ry, 0, sin_ry, 0 },
-            .{ 0, 1, 0, 0 },
-            .{ -sin_ry, 0, cos_ry, 0 },
-            .{ 0, 0, 0, 1 }
-        };
-        const zr_mat: [4][4]f32 = .{
-            .{ cos_rz, -sin_rz, 0, 0 },
-            .{ sin_rz, cos_rz, 0, 0 },
-            .{ 0, 0, 1, 0 },
-            .{ 0, 0, 0, 1 }
-        };
-        const yrzr_mat: [4][4]f32 = utils.multmat_44_44(f32, &yr_mat, &zr_mat);
-        const rot_mat: [4][4]f32 = utils.multmat_44_44(f32, &xr_mat, &yrzr_mat);
-        const rottrans_mat: [4][4]f32 = utils.multmat_44_44(f32, &trans_mat, &rot_mat);
-        const transform_mat: [4][4]f32 = utils.multmat_44_44(f32, &rottrans_mat, &scale_mat);
+        const world_transform: [4][4]f32 = get_world_transform(mesh.pos, mesh.rot, mesh.scale);
+        const view_transform: [4][4]f32 = utils.multmat_44_44(f32, &cam_transform, &world_transform);
 
         // Render triangles
         for(mesh.tris) |tri_loc| { // triangle_local space
             var tri_world: [3]@Vector(3, f32) = undefined;
             var i: usize = 0;
             while(i < 3) : (i += 1) {
-                tri_world[i] = utils.multmat_44_3(f32, &transform_mat, &tri_loc[i]);
+                tri_world[i] = utils.multmat_44_3(f32, &view_transform, &tri_loc[i]);
             }
             render_triangle(&tri_world, canvas);
         }
     }
 }
 
-// FUNCTIONS 
+// TODO: pass by reference?
+pub fn get_world_transform(pos: @Vector(3, f32), rot: @Vector(4, f32), scale: @Vector(3, f32)) [4][4]f32 {
+    // Calculate view matrix
+    const translate_mat: [4][4]f32 = .{
+        .{ 1, 0, 0, pos[0] },
+        .{ 0, 1, 0, pos[1] },
+        .{ 0, 0, 1, pos[2] },
+        .{ 0, 0, 0, 1 },
+    };
+
+    // TODO: Factor scaling out of this function as view transform doesn't use it?
+    const scale_mat: [4][4]f32 = .{
+        .{ scale[0], 0, 0, 0 },
+        .{ 0, scale[1], 0, 0 },
+        .{ 0, 0, scale[2], 0 },
+        .{ 0, 0, 0, 1 },
+    };
+
+    const cos_rx: f32 = @cos(rot[0]);
+    const sin_rx: f32 = @sin(rot[0]);
+    const cos_ry: f32 = @cos(rot[1]);
+    const sin_ry: f32 = @sin(rot[1]);
+    const cos_rz: f32 = @cos(rot[2]);
+    const sin_rz: f32 = @sin(rot[2]);
+
+    const xr_mat: [4][4]f32 = .{
+        .{ 1, 0, 0, 0 },
+        .{ 0, cos_rx, -sin_rx, 0 },
+        .{ 0, sin_rx, cos_rx, 0 },
+        .{ 0, 0, 0, 1 }
+    };
+    const yr_mat: [4][4]f32 = .{
+        .{ cos_ry, 0, sin_ry, 0 },
+        .{ 0, 1, 0, 0 },
+        .{ -sin_ry, 0, cos_ry, 0 },
+        .{ 0, 0, 0, 1 }
+    };
+    const zr_mat: [4][4]f32 = .{
+        .{ cos_rz, -sin_rz, 0, 0 },
+        .{ sin_rz, cos_rz, 0, 0 },
+        .{ 0, 0, 1, 0 },
+        .{ 0, 0, 0, 1 }
+    };
+    const yrzr_mat: [4][4]f32 = utils.multmat_44_44(f32, &yr_mat, &zr_mat);
+    const rot_mat: [4][4]f32 = utils.multmat_44_44(f32, &xr_mat, &yrzr_mat);
+    // TODO: rot_trans_mat is the variable in question that would have to change
+    const rot_trans_mat: [4][4]f32 = utils.multmat_44_44(f32, &translate_mat, &rot_mat);
+
+    return utils.multmat_44_44(f32, &rot_trans_mat, &scale_mat);
+}
+
 pub fn render_triangle(triangle: *[3]@Vector(3, f32), canvas: *draw.Canvas) void {
     const projection: Projection = Projection.Perspective;
     const fov: f32 = 1.5; // radians

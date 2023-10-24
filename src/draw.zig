@@ -7,8 +7,8 @@ const colors = @import("colors.zig");
 //       This would just require a slight refactor, as when it becomes needed, there will
 //       only be once canvas initialized anyway.
 
-pub const WIDTH: i32 = 1000;
-pub const HEIGHT: i32 = 1000;
+pub const WIDTH: i32 = 750;
+pub const HEIGHT: i32 = 750;
 const CANVAS_NUM_PIXELS: u32 = WIDTH * HEIGHT;
 
 pub const Canvas = struct {
