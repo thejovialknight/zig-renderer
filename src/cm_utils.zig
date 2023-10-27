@@ -52,6 +52,14 @@ pub fn dot_v3(comptime T: type, v0: @Vector(3, T), v1: @Vector(3, T)) T {
     return v0[0] * v1[0] + v0[1] * v1[1] + v0[2] * v1[2];
 }
 
+pub fn cross_v3 (v1: @Vector(3, f32), v2: @Vector(3, f32)) @Vector(3, f32) { 
+    return .{
+        v1[1] * v2[2] - v1[2] * v2[1],
+        v1[0] * v2[2] - v1[2] * v2[0],
+        v1[0] * v2[1] - v1[1] * v2[0]
+    };
+}
+
 pub fn multmat_44_44(comptime T: type, m0: *const [4][4]f32, m1: *const [4][4]f32) [4][4]T {
     var result: [4][4]T = undefined;
     var m0_row: usize = 0;
@@ -87,4 +95,19 @@ pub fn multmat_44_3(comptime T: type, m0: *const [4][4]f32, m1: *const [3]f32) [
     const m1_4: [4]f32 = .{ m1[0], m1[1], m1[2], 1 };
     const result_4 = multmat_44_4(T, m0, &m1_4);
     return .{ result_4[0], result_4[1], result_4[2] };
+}
+
+// TODO: This is how we rotate a vector by a quaternion. This replaces q*p*q^-1 operation?
+// This will be used to do, um, something
+pub fn rotate_vector_by_quaternion(v: @Vector(3, f32), q: @Vector(4, f32)) @Vector(3, f32) {
+    // Extract the vector part of the quaternion
+    const u: @Vector(3, f32) = .{ q.x, q.y, q.z };
+
+    // Extract the scalar part of the quaternion
+    const s: f32 = q.w;
+
+    // Do the math
+    return 2.0 * dot_v3(u, v) * u
+           + (s*s - dot_v3(u, u)) * v
+           + 2.0 * s * cross_v3(u, v);
 }

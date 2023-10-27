@@ -19,7 +19,7 @@ pub const Projection = enum {
 
 pub fn render_world(world: *World, canvas: *draw.Canvas) void {
     // Calculate view transform
-    const view_transform: [4][4]f32 = get_view_transform(world.camera.pos, world.camera.pitch, world.camera.yaw); 
+    const view_transform: [4][4]f32 = get_view_transform(-world.camera.pos, world.camera.pitch, world.camera.yaw); 
     
     // Render meshes
     for(0..world.meshes_num) |mesh_index| {
@@ -41,7 +41,121 @@ pub fn render_world(world: *World, canvas: *draw.Canvas) void {
     }
 }
 
+pub fn get_translation_matrix(pos: @Vector(3, f32)) [4][4]f32 {
+    return .{
+        .{ 1, 0, 0, pos[0] },
+        .{ 0, 1, 0, pos[1] },
+        .{ 0, 0, 1, pos[2] },
+        .{ 0, 0, 0, 1 },
+    };
+}
+
+pub fn get_rotation_matrix(rot: @Vector(4, f32)) [4][4]f32 {
+    const cos_rx: f32 = @cos(rot[0]);
+    const sin_rx: f32 = @sin(rot[0]);
+    const cos_ry: f32 = @cos(rot[1]);
+    const sin_ry: f32 = @sin(rot[1]);
+    const cos_rz: f32 = @cos(rot[2]);
+    const sin_rz: f32 = @sin(rot[2]);
+
+    const xr_mat: [4][4]f32 = .{
+        .{ 1, 0, 0, 0 },
+        .{ 0, cos_rx, -sin_rx, 0 },
+        .{ 0, sin_rx, cos_rx, 0 },
+        .{ 0, 0, 0, 1 }
+    };
+    const yr_mat: [4][4]f32 = .{
+        .{ cos_ry, 0, sin_ry, 0 },
+        .{ 0, 1, 0, 0 },
+        .{ -sin_ry, 0, cos_ry, 0 },
+        .{ 0, 0, 0, 1 }
+    };
+    const zr_mat: [4][4]f32 = .{
+        .{ cos_rz, -sin_rz, 0, 0 },
+        .{ sin_rz, cos_rz, 0, 0 },
+        .{ 0, 0, 1, 0 },
+        .{ 0, 0, 0, 1 }
+    };
+    const yrxr_mat: [4][4]f32 = utils.multmat_44_44(f32, &yr_mat, &xr_mat);
+    return utils.multmat_44_44(f32, &zr_mat, &yrxr_mat);
+}
+
+pub fn get_rotation_matrix_cam(pitch: f32, yaw: f32) [4][4]f32 {
+    const cos_rx: f32 = @cos(-pitch);
+    const sin_rx: f32 = @sin(-pitch);
+    const cos_ry: f32 = @cos(-yaw);
+    const sin_ry: f32 = @sin(-yaw);
+
+    const xr_mat: [4][4]f32 = .{
+        .{ 1, 0, 0, 0 },
+        .{ 0, cos_rx, -sin_rx, 0 },
+        .{ 0, sin_rx, cos_rx, 0 },
+        .{ 0, 0, 0, 1 }
+    };
+    const yr_mat: [4][4]f32 = .{
+        .{ cos_ry, 0, sin_ry, 0 },
+        .{ 0, 1, 0, 0 },
+        .{ -sin_ry, 0, cos_ry, 0 },
+        .{ 0, 0, 0, 1 }
+    };
+
+    return utils.multmat_44_44(f32, &xr_mat, &yr_mat);
+}
+
+pub fn get_rotation_matrix_cam_2(pitch: f32, yaw: f32) [4][4]f32 {
+    const cos_rx: f32 = @cos(pitch);
+    const sin_rx: f32 = @sin(pitch);
+    const cos_ry: f32 = @cos(yaw);
+    const sin_ry: f32 = @sin(yaw);
+
+    const xr_mat: [4][4]f32 = .{
+        .{ 1, 0, 0, 0 },
+        .{ 0, cos_rx, -sin_rx, 0 },
+        .{ 0, sin_rx, cos_rx, 0 },
+        .{ 0, 0, 0, 1 }
+    };
+    const yr_mat: [4][4]f32 = .{
+        .{ cos_ry, 0, sin_ry, 0 },
+        .{ 0, 1, 0, 0 },
+        .{ -sin_ry, 0, cos_ry, 0 },
+        .{ 0, 0, 0, 1 }
+    };
+
+    return utils.multmat_44_44(f32, &yr_mat, &xr_mat);
+}
+
+
+pub fn get_scale_matrix(scale: @Vector(3, f32)) [4][4]f32 {
+    return .{
+        .{ scale[0], 0, 0, 0 },
+        .{ 0, scale[1], 0, 0 },
+        .{ 0, 0, scale[2], 0 },
+        .{ 0, 0, 0, 1 },
+    };
+}
+
 pub fn get_view_transform(pos: @Vector(3, f32), pitch: f32, yaw: f32) [4][4]f32 {
+    const translation_matrix: [4][4]f32 = get_translation_matrix(pos);
+    const rotation_matrix: [4][4]f32 = get_rotation_matrix_cam(pitch, yaw);
+    return utils.multmat_44_44(f32, &rotation_matrix, &translation_matrix);
+}
+
+pub fn get_view_transform_exp(pos: @Vector(3, f32), rot: @Vector(4, f32)) [4][4]f32 {
+    const global_up: @Vector(3, f32) = .{ 0, 1, 0 };
+    const dir: @Vector(3, f32) = .{ rot[0], rot[1], rot[2] };
+
+    const right: @Vector(3, f32) = utils.cross_v3(dir, global_up);
+    const up: @Vector(3, f32) = utils.cross_v3(right, dir);
+
+    return .{
+        .{ -rot[0], -up[0], dir[0], pos[0] },
+        .{ -rot[1], -up[1], dir[1], pos[1] },
+        .{ -rot[2], -up[2], dir[2], pos[2] },
+        .{ 0, 0, 0, 1 }
+    };
+}
+
+pub fn get_view_transform_old(pos: @Vector(3, f32), rot: @Vector(4, f32)) [4][4]f32 {
     // Calculate view matrix
     const translate_mat: [4][4]f32 = .{
         .{ 1, 0, 0, -pos[0] },
@@ -50,12 +164,12 @@ pub fn get_view_transform(pos: @Vector(3, f32), pitch: f32, yaw: f32) [4][4]f32 
         .{ 0, 0, 0, 1 },
     };
 
-    const cos_rx: f32 = @cos(-pitch);
-    const sin_rx: f32 = @sin(-pitch);
-    const cos_ry: f32 = @cos(-yaw);
-    const sin_ry: f32 = @sin(-yaw);
-    const cos_rz: f32 = @cos(0.0);
-    const sin_rz: f32 = @sin(0.0);
+    const cos_rx: f32 = @cos(-rot[0]);
+    const sin_rx: f32 = @sin(-rot[0]);
+    const cos_ry: f32 = @cos(-rot[1]);
+    const sin_ry: f32 = @sin(-rot[1]);
+    const cos_rz: f32 = @cos(-rot[2]);
+    const sin_rz: f32 = @sin(-rot[2]);
 
     const xr_mat: [4][4]f32 = .{
         .{ 1, 0, 0, 0 },
@@ -84,55 +198,16 @@ pub fn get_view_transform(pos: @Vector(3, f32), pitch: f32, yaw: f32) [4][4]f32 
 
 // TODO: pass by reference?
 pub fn get_world_transform(pos: @Vector(3, f32), rot: @Vector(4, f32), scale: @Vector(3, f32)) [4][4]f32 {
-    const translate_mat: [4][4]f32 = .{
-        .{ 1, 0, 0, pos[0] },
-        .{ 0, 1, 0, pos[1] },
-        .{ 0, 0, 1, pos[2] },
-        .{ 0, 0, 0, 1 },
-    };
-
-    const scale_mat: [4][4]f32 = .{
-        .{ scale[0], 0, 0, 0 },
-        .{ 0, scale[1], 0, 0 },
-        .{ 0, 0, scale[2], 0 },
-        .{ 0, 0, 0, 1 },
-    };
-
-    const cos_rx: f32 = @cos(rot[0]);
-    const sin_rx: f32 = @sin(rot[0]);
-    const cos_ry: f32 = @cos(rot[1]);
-    const sin_ry: f32 = @sin(rot[1]);
-    const cos_rz: f32 = @cos(rot[2]);
-    const sin_rz: f32 = @sin(rot[2]);
-
-    const xr_mat: [4][4]f32 = .{
-        .{ 1, 0, 0, 0 },
-        .{ 0, cos_rx, -sin_rx, 0 },
-        .{ 0, sin_rx, cos_rx, 0 },
-        .{ 0, 0, 0, 1 }
-    };
-    const yr_mat: [4][4]f32 = .{
-        .{ cos_ry, 0, sin_ry, 0 },
-        .{ 0, 1, 0, 0 },
-        .{ -sin_ry, 0, cos_ry, 0 },
-        .{ 0, 0, 0, 1 }
-    };
-    const zr_mat: [4][4]f32 = .{
-        .{ cos_rz, -sin_rz, 0, 0 },
-        .{ sin_rz, cos_rz, 0, 0 },
-        .{ 0, 0, 1, 0 },
-        .{ 0, 0, 0, 1 }
-    };
-    const yrxr_mat: [4][4]f32 = utils.multmat_44_44(f32, &yr_mat, &xr_mat);
-    const rot_mat: [4][4]f32 = utils.multmat_44_44(f32, &zr_mat, &yrxr_mat);
-    const rot_trans_mat: [4][4]f32 = utils.multmat_44_44(f32, &translate_mat, &rot_mat);
-
-    return utils.multmat_44_44(f32, &rot_trans_mat, &scale_mat);
+    const translation_matrix: [4][4]f32 = get_translation_matrix(pos);
+    const rotation_matrix: [4][4]f32 = get_rotation_matrix(rot);
+    const scale_matrix: [4][4]f32 = get_scale_matrix(scale);
+    const tr_matrix = utils.multmat_44_44(f32, &translation_matrix, &rotation_matrix);
+    return utils.multmat_44_44(f32, &scale_matrix, &tr_matrix);
 }
 
 pub fn render_triangle(triangle: *[3]@Vector(3, f32), canvas: *draw.Canvas) void {
     const projection: Projection = Projection.Perspective;
-    const fov: f32 = 1.8; // radians
+    const fov: f32 = 1.5; // radians
     const znear: f32 = 0.1;
     const zfar: f32 = 100;
 
