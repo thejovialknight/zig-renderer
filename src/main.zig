@@ -65,6 +65,8 @@ pub fn main() !void {
     var a: bool = false;
     var s: bool = false;
     var d: bool = false;
+    var q: bool = false;
+    var e: bool = false;
     var up: bool = false;
     var left: bool = false;
     var down: bool = false;
@@ -90,6 +92,8 @@ pub fn main() !void {
                         sdl.SDL_SCANCODE_A => a = true,
                         sdl.SDL_SCANCODE_S => s = true,
                         sdl.SDL_SCANCODE_D => d = true,
+                        sdl.SDL_SCANCODE_SPACE => q = true,
+                        sdl.SDL_SCANCODE_LSHIFT => e = true,
                         sdl.SDL_SCANCODE_UP => up = true,
                         sdl.SDL_SCANCODE_LEFT => left = true,
                         sdl.SDL_SCANCODE_DOWN => down = true,
@@ -103,6 +107,8 @@ pub fn main() !void {
                         sdl.SDL_SCANCODE_A => a = false,
                         sdl.SDL_SCANCODE_S => s = false,
                         sdl.SDL_SCANCODE_D => d = false,
+                        sdl.SDL_SCANCODE_SPACE => q = false,
+                        sdl.SDL_SCANCODE_LSHIFT => e = false,
                         sdl.SDL_SCANCODE_UP => up = false,
                         sdl.SDL_SCANCODE_LEFT => left = false,
                         sdl.SDL_SCANCODE_DOWN => down = false,
@@ -129,6 +135,8 @@ pub fn main() !void {
         if(a) world.camera.pos -= cam.right(&world.camera) * cam_speed_scalar;
         if(s) world.camera.pos -= cam.forward(&world.camera) * cam_speed_scalar;
         if(d) world.camera.pos += cam.right(&world.camera) * cam_speed_scalar;
+        if(q) world.camera.pos -= cam.up(&world.camera) * cam_speed_scalar;
+        if(e) world.camera.pos += cam.up(&world.camera) * cam_speed_scalar;
 
         //if(up) pitch -= cam_rot_speed;
         //if(left) yaw += cam_rot_speed;

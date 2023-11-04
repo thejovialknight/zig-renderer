@@ -21,6 +21,12 @@ pub fn right(camera: *Camera) @Vector(3, f32) {
     return utils.multmat_44_3(f32, &rotation_matrix, &local_right);
 }
 
+pub fn up(camera: *Camera) @Vector(3, f32) {
+    const rotation_matrix: [4][4]f32 = raster.get_rotation_matrix_cam_2(camera.pitch, camera.yaw);
+    const local_right: @Vector(3, f32) = .{ 0, 1, 0 };
+    return utils.multmat_44_3(f32, &rotation_matrix, &local_right);
+}
+
 pub fn rotate(camera: *Camera, pitch: f32, yaw: f32) void {
     camera.pitch += pitch;
     camera.yaw += yaw;
