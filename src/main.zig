@@ -59,15 +59,12 @@ pub fn main() !void {
     initialize_world(&world, &platform);
 
     loop: while (true) {
-        // Input
         poll_platform_events(&platform);
         if(platform.quit) break :loop;
         update_input(&platform, &input);
 
-        // Logic
         update_world(&world, &input);
 
-        // Output
         render_world_to_canvas(&world, &canvas);
         present_canvas_to_platform(&canvas, platform.window, platform.surface);
     }
