@@ -1,11 +1,7 @@
 const sdl = @cImport(@cInclude("SDL.h"));
 const std = @import("std");
-const utils = @import("cm_utils.zig");
-const colors = @import("colors.zig");
 
-// NOTE: Might want to end up making this configurable when Canvas is initialized.
-//       This would just require a slight refactor, as when it becomes needed, there will
-//       only be once canvas initialized anyway.
+const swap = @import("swap.zig").swap;
 
 pub const WIDTH: i32 = 750;
 pub const HEIGHT: i32 = 750;
@@ -17,39 +13,18 @@ pub const Canvas = struct {
     height: i32 = HEIGHT,
 };
 
-pub fn clear(canvas: *Canvas, color: @Vector(4, u8)) void {
+pub fn clear(canvas: *Canvas) void {
+    const color: @Vector(4, u8) = .{ 0, 0, 0, 0 };
+
     var i: usize = 0;
     while(i < canvas.pixels.len) : (i += 1) {
         canvas.pixels[i] = color;
     }
-
     return;
-}
-
-pub fn present(canvas: *Canvas, window: *sdl.SDL_Window, surface: *sdl.SDL_Surface) void {
-    _ = sdl.SDL_LockSurface(surface);
-    var y: i32 = 0;
-    while(y < canvas.height) : (y += 1) {
-        var x: i32 = 0;
-        while(x < canvas.height) : (x += 1) {
-            var pixel_index: usize = @intCast(y * canvas.width + x);
-            var c: @Vector(4, u8) = canvas.pixels[pixel_index];
-            var sdl_color: u32 = sdl.SDL_MapRGBA(surface.format, c[0], c[1], c[2], c[3]);
-
-            var surface_pointer: [*]u32 = @ptrCast(@alignCast(surface.*.pixels)); // cast c pointer to [*]u32
-            surface_pointer[pixel_index] = sdl_color;
-        }
-    }
-
-    _ = sdl.SDL_UnlockSurface(surface);
-    _ = sdl.SDL_UpdateWindowSurface(window);
-
-    clear(canvas, colors.black());
 }
 
 pub fn draw_pixel(x: i32, y: i32, color: @Vector(4, u8), canvas: *Canvas) void {
     if(x < 0 or y < 0 or x >= canvas.width or y >= canvas.height) return;
-
     canvas.pixels[@intCast(y * canvas.width + x)] = color;
 }
 
@@ -78,8 +53,8 @@ pub fn draw_line(xa: i32, ya: i32, xb: i32, yb: i32, color: @Vector(4, u8), canv
     }
 
     if(x1 > x2) {
-        utils.swap(i32, &x1, &x2);
-        utils.swap(i32, &y1, &y2);
+        swap(i32, &x1, &x2);
+        swap(i32, &y1, &y2);
     }
 
     const dx: i32 = x2 - x1;

@@ -1,255 +1,10 @@
-// INCLUDES 
-const std = @import("std");
-const i_math = @import("zlm/src/zlm-generic.zig").SpecializeOn(i32);
-const f_math = @import("zlm/src/zlm-generic.zig").SpecializeOn(f32);
+const Canvas = @import("draw.zig").Canvas;
+const min_in_array = @import("cm_math.zig").min_in_array;
+const max_in_array = @import("cm_math.zig").max_in_array;
+const dot_v3 = @import("cm_math.zig").dot_v3;
+const draw_pixel = @import("draw.zig").draw_pixel;
 
-const Mesh = @import("mesh.zig").Mesh;
-const World = @import("world.zig").World;
-
-const draw = @import("draw.zig");
-const colors = @import("colors.zig");
-const screen = @import("screen.zig");
-const utils = @import("cm_utils.zig");    
-
-// STRUCTS 
-pub const Projection = enum {
-    Perspective,
-    Orthogonal
-};
-
-pub fn render_world(world: *World, canvas: *draw.Canvas) void {
-    // Calculate view transform
-    const view_transform: [4][4]f32 = get_view_transform(-world.camera.pos, world.camera.pitch, world.camera.yaw); 
-    
-    // Render meshes
-    for(0..world.meshes_num) |mesh_index| {
-        const mesh: *Mesh = &world.meshes[mesh_index];
-        
-        // Calculate world transform
-        const world_transform: [4][4]f32 = get_world_transform(mesh.pos, mesh.rot, mesh.scale);
-        const mwv_transform: [4][4]f32 = utils.multmat_44_44(f32, &view_transform, &world_transform);
-
-        // Render triangles
-        for(mesh.tris) |tri_loc| { // triangle_local space
-            var tri_mwv: [3]@Vector(3, f32) = undefined;
-            var i: usize = 0;
-            while(i < 3) : (i += 1) {
-                tri_mwv[i] = utils.multmat_44_3(f32, &mwv_transform, &tri_loc[i]);
-            }
-            render_triangle(&tri_mwv, canvas);
-        }
-    }
-}
-
-pub fn get_translation_matrix(pos: @Vector(3, f32)) [4][4]f32 {
-    return .{
-        .{ 1, 0, 0, pos[0] },
-        .{ 0, 1, 0, pos[1] },
-        .{ 0, 0, 1, pos[2] },
-        .{ 0, 0, 0, 1 },
-    };
-}
-
-pub fn get_rotation_matrix(rot: @Vector(4, f32)) [4][4]f32 {
-    const cos_rx: f32 = @cos(rot[0]);
-    const sin_rx: f32 = @sin(rot[0]);
-    const cos_ry: f32 = @cos(rot[1]);
-    const sin_ry: f32 = @sin(rot[1]);
-    const cos_rz: f32 = @cos(rot[2]);
-    const sin_rz: f32 = @sin(rot[2]);
-
-    const xr_mat: [4][4]f32 = .{
-        .{ 1, 0, 0, 0 },
-        .{ 0, cos_rx, -sin_rx, 0 },
-        .{ 0, sin_rx, cos_rx, 0 },
-        .{ 0, 0, 0, 1 }
-    };
-    const yr_mat: [4][4]f32 = .{
-        .{ cos_ry, 0, sin_ry, 0 },
-        .{ 0, 1, 0, 0 },
-        .{ -sin_ry, 0, cos_ry, 0 },
-        .{ 0, 0, 0, 1 }
-    };
-    const zr_mat: [4][4]f32 = .{
-        .{ cos_rz, -sin_rz, 0, 0 },
-        .{ sin_rz, cos_rz, 0, 0 },
-        .{ 0, 0, 1, 0 },
-        .{ 0, 0, 0, 1 }
-    };
-    const yrxr_mat: [4][4]f32 = utils.multmat_44_44(f32, &yr_mat, &xr_mat);
-    return utils.multmat_44_44(f32, &zr_mat, &yrxr_mat);
-}
-
-pub fn get_rotation_matrix_cam(pitch: f32, yaw: f32) [4][4]f32 {
-    const cos_rx: f32 = @cos(-pitch);
-    const sin_rx: f32 = @sin(-pitch);
-    const cos_ry: f32 = @cos(-yaw);
-    const sin_ry: f32 = @sin(-yaw);
-
-    const xr_mat: [4][4]f32 = .{
-        .{ 1, 0, 0, 0 },
-        .{ 0, cos_rx, -sin_rx, 0 },
-        .{ 0, sin_rx, cos_rx, 0 },
-        .{ 0, 0, 0, 1 }
-    };
-    const yr_mat: [4][4]f32 = .{
-        .{ cos_ry, 0, sin_ry, 0 },
-        .{ 0, 1, 0, 0 },
-        .{ -sin_ry, 0, cos_ry, 0 },
-        .{ 0, 0, 0, 1 }
-    };
-
-    return utils.multmat_44_44(f32, &xr_mat, &yr_mat);
-}
-
-pub fn get_rotation_matrix_cam_2(pitch: f32, yaw: f32) [4][4]f32 {
-    const cos_rx: f32 = @cos(pitch);
-    const sin_rx: f32 = @sin(pitch);
-    const cos_ry: f32 = @cos(yaw);
-    const sin_ry: f32 = @sin(yaw);
-
-    const xr_mat: [4][4]f32 = .{
-        .{ 1, 0, 0, 0 },
-        .{ 0, cos_rx, -sin_rx, 0 },
-        .{ 0, sin_rx, cos_rx, 0 },
-        .{ 0, 0, 0, 1 }
-    };
-    const yr_mat: [4][4]f32 = .{
-        .{ cos_ry, 0, sin_ry, 0 },
-        .{ 0, 1, 0, 0 },
-        .{ -sin_ry, 0, cos_ry, 0 },
-        .{ 0, 0, 0, 1 }
-    };
-
-    return utils.multmat_44_44(f32, &yr_mat, &xr_mat);
-}
-
-
-pub fn get_scale_matrix(scale: @Vector(3, f32)) [4][4]f32 {
-    return .{
-        .{ scale[0], 0, 0, 0 },
-        .{ 0, scale[1], 0, 0 },
-        .{ 0, 0, scale[2], 0 },
-        .{ 0, 0, 0, 1 },
-    };
-}
-
-pub fn get_view_transform(pos: @Vector(3, f32), pitch: f32, yaw: f32) [4][4]f32 {
-    const translation_matrix: [4][4]f32 = get_translation_matrix(pos);
-    const rotation_matrix: [4][4]f32 = get_rotation_matrix_cam(pitch, yaw);
-    return utils.multmat_44_44(f32, &rotation_matrix, &translation_matrix);
-}
-
-pub fn get_view_transform_exp(pos: @Vector(3, f32), rot: @Vector(4, f32)) [4][4]f32 {
-    const global_up: @Vector(3, f32) = .{ 0, 1, 0 };
-    const dir: @Vector(3, f32) = .{ rot[0], rot[1], rot[2] };
-
-    const right: @Vector(3, f32) = utils.cross_v3(dir, global_up);
-    const up: @Vector(3, f32) = utils.cross_v3(right, dir);
-
-    return .{
-        .{ -rot[0], -up[0], dir[0], pos[0] },
-        .{ -rot[1], -up[1], dir[1], pos[1] },
-        .{ -rot[2], -up[2], dir[2], pos[2] },
-        .{ 0, 0, 0, 1 }
-    };
-}
-
-pub fn get_view_transform_old(pos: @Vector(3, f32), rot: @Vector(4, f32)) [4][4]f32 {
-    // Calculate view matrix
-    const translate_mat: [4][4]f32 = .{
-        .{ 1, 0, 0, -pos[0] },
-        .{ 0, 1, 0, -pos[1] },
-        .{ 0, 0, 1, -pos[2] },
-        .{ 0, 0, 0, 1 },
-    };
-
-    const cos_rx: f32 = @cos(-rot[0]);
-    const sin_rx: f32 = @sin(-rot[0]);
-    const cos_ry: f32 = @cos(-rot[1]);
-    const sin_ry: f32 = @sin(-rot[1]);
-    const cos_rz: f32 = @cos(-rot[2]);
-    const sin_rz: f32 = @sin(-rot[2]);
-
-    const xr_mat: [4][4]f32 = .{
-        .{ 1, 0, 0, 0 },
-        .{ 0, cos_rx, -sin_rx, 0 },
-        .{ 0, sin_rx, cos_rx, 0 },
-        .{ 0, 0, 0, 1 }
-    };
-    const yr_mat: [4][4]f32 = .{
-        .{ cos_ry, 0, sin_ry, 0 },
-        .{ 0, 1, 0, 0 },
-        .{ -sin_ry, 0, cos_ry, 0 },
-        .{ 0, 0, 0, 1 }
-    };
-    const zr_mat: [4][4]f32 = .{
-        .{ cos_rz, -sin_rz, 0, 0 },
-        .{ sin_rz, cos_rz, 0, 0 },
-        .{ 0, 0, 1, 0 },
-        .{ 0, 0, 0, 1 }
-    };
-    
-    const yrxr_mat: [4][4]f32 = utils.multmat_44_44(f32, &yr_mat, &xr_mat);
-    const rot_mat: [4][4]f32 = utils.multmat_44_44(f32, &zr_mat, &yrxr_mat);
-    //const rot_mat: [4][4]f32 = utils.multmat_44_44(f32, &yr_mat, &xr_mat);
-    return utils.multmat_44_44(f32, &rot_mat, &translate_mat);
-}
-
-// TODO: pass by reference?
-pub fn get_world_transform(pos: @Vector(3, f32), rot: @Vector(4, f32), scale: @Vector(3, f32)) [4][4]f32 {
-    const translation_matrix: [4][4]f32 = get_translation_matrix(pos);
-    const rotation_matrix: [4][4]f32 = get_rotation_matrix(rot);
-    const scale_matrix: [4][4]f32 = get_scale_matrix(scale);
-    const tr_matrix = utils.multmat_44_44(f32, &translation_matrix, &rotation_matrix);
-    return utils.multmat_44_44(f32, &scale_matrix, &tr_matrix);
-}
-
-pub fn render_triangle(triangle: *[3]@Vector(3, f32), canvas: *draw.Canvas) void {
-    const projection: Projection = Projection.Perspective;
-    const fov: f32 = 1.5; // radians
-    const znear: f32 = 0.1;
-    const zfar: f32 = 100;
-
-    const width: f32 = @floatFromInt(canvas.width);
-    const height: f32 = @floatFromInt(canvas.height);
-    const aspect: f32 = height / width;
-    const aspect_scalar: @Vector(3, f32) = @splat(aspect);
-
-    var screen_coords: [3]@Vector(3, f32) = .{ .{ 0, 0, 0 }, .{ 0, 0, 0 }, .{ 0, 0, 0 } };
-    for(0..3) |j| {
-        const world_pos: @Vector(3, f32) = triangle[j];
-        
-        var norm_device_pos: @Vector(3, f32) = .{ 0, 0, 0 };
-        if(projection == Projection.Orthogonal) {   
-            norm_device_pos = world_pos * aspect_scalar;
-        }
-        else {
-            const proj_mat: [4]@Vector(4, f32) = .{
-                .{ 1 / (@tan(fov / 2) * aspect), 0, 0, 0 },
-                .{ 0, 1 / @tan(fov / 2), 0, 0 },
-                .{ 0, 0, (zfar + znear) / (znear - zfar), -1 },
-                .{ 0, 0, (znear * zfar * 2) / (znear - zfar), 0}
-            };
-
-            const world_pos_mat: @Vector(4, f32) = .{ world_pos[0], world_pos[1], world_pos[2], 1 };
-            const clip: @Vector(4, f32) = utils.multmat_44_4(f32, &proj_mat, &world_pos_mat);
-            norm_device_pos[0] = clip[0] / clip[2];
-            norm_device_pos[1] = clip[1] / clip[2];
-            norm_device_pos[2] = clip[2] / clip[2];
-        }
-
-        screen_coords[j] = .{ 
-            (norm_device_pos[0] + 1) * width / 2, 
-            (norm_device_pos[1] + 1) * height / 2,
-            norm_device_pos[2]
-        };
-    }
-
-    rasterize_triangle(screen_coords, canvas);
-}
-
-pub fn rasterize_triangle(coords: [3]@Vector(3, f32), canvas: *draw.Canvas) void {
+pub fn rasterize_triangle(coords: [3]@Vector(3, f32), canvas: *Canvas) void {
     const x0: f32 = (coords[0][0]);
     const x1: f32 = (coords[1][0]);
     const x2: f32 = (coords[2][0]);
@@ -257,28 +12,34 @@ pub fn rasterize_triangle(coords: [3]@Vector(3, f32), canvas: *draw.Canvas) void
     const y1: f32 = (coords[1][1]);
     const y2: f32 = (coords[2][1]);
     // Bounding rect
-    var xvals: [3]f32 = .{ x0, x1, x2 }; // Declaration because min_in_array and max_...
-    var yvals: [3]f32 = .{ y0, y1, y2 }; // require already initialized array
-    const xmin: f32 = (utils.min_in_array(f32, &xvals) ) ;
-    const xmax: f32 = (utils.max_in_array(f32, &xvals) ) ;
-    const ymin: f32 = (utils.min_in_array(f32, &yvals) ) ;
-    const ymax: f32 = (utils.max_in_array(f32, &yvals) ) ;
+    var xvals: [3]f32 = .{ x0, x1, x2 };
+    var yvals: [3]f32 = .{ y0, y1, y2 };
+    const xmin: f32 = (min_in_array(f32, &xvals) ) ;
+    const xmax: f32 = (max_in_array(f32, &xvals) ) ;
+    const ymin: f32 = (min_in_array(f32, &yvals) ) ;
+    const ymax: f32 = (max_in_array(f32, &yvals) ) ;
     // Factored out of barycentric calculation in loop
     const v0: @Vector(3, f32) = coords[1] - coords[0];
     const v1: @Vector(3, f32) = coords[2] - coords[0];
-    const dot00: f32 = utils.dot_v3(f32, v0, v0);
-    const dot01: f32 = utils.dot_v3(f32, v0, v1);
-    const dot11: f32 = utils.dot_v3(f32, v1, v1);
+    const dot00: f32 = dot_v3(f32, v0, v0);
+    const dot01: f32 = dot_v3(f32, v0, v1);
+    const dot11: f32 = dot_v3(f32, v1, v1);
     const det: f32 = dot00 * dot11 - dot01 * dot01;
 
     var py: f32 = ymin;
     while(py < ymax) : (py += 1) {
+        const upper_y_bound: f32 = @floatFromInt(canvas.height);
+        if(py < 0 or py > upper_y_bound) continue;
+
         var px: f32 = xmin;
         while(px < xmax) : (px += 1) {
+            const upper_x_bound: f32 = @floatFromInt(canvas.width);
+            if(px < 0 or px > upper_x_bound) continue;
+
             // Get barycentric coordinates
             const v2: @Vector(3, f32) = @Vector(3, f32) { px, py, 0 } - coords[0];
-            const dot20: f32 = utils.dot_v3(f32, v2, v0);
-            const dot21: f32 = utils.dot_v3(f32, v2, v1);
+            const dot20: f32 = dot_v3(f32, v2, v0);
+            const dot21: f32 = dot_v3(f32, v2, v1);
             const v: f32 = (dot11 * dot20 - dot01 * dot21) / det;
             const w: f32 = (dot00 * dot21 - dot01 * dot20) / det;
             const u: f32 = 1 - v - w;
@@ -290,7 +51,7 @@ pub fn rasterize_triangle(coords: [3]@Vector(3, f32), canvas: *draw.Canvas) void
                     255
                 };
 
-                draw.draw_pixel(@intFromFloat(px), @intFromFloat(py), color, canvas);
+                draw_pixel(@intFromFloat(px), @intFromFloat(py), color, canvas);
             }
         }
     }
