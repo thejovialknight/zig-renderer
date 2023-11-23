@@ -1,3 +1,5 @@
+* quick note: website where you can mix and match popular midis and popular sound fonts, or synthesize with an onboard synthesizer. WebGL?
+
 ******************
 NOTES ON RENDERING
 ******************

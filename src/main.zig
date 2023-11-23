@@ -1,6 +1,6 @@
 // TODO: Here's a broad overview agenda for what to do next.
 //
-// * Implement better triangle renderer. Perhaps doesn't need to be final,
+// * Implement better triangle rasterizer. Perhaps doesn't need to be final,
 //   but should at least stop the freezes if possible
 //
 // * Implement depth buffer

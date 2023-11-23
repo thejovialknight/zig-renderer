@@ -3,8 +3,8 @@ const std = @import("std");
 
 const swap = @import("swap.zig").swap;
 
-pub const WIDTH: i32 = 750;
-pub const HEIGHT: i32 = 750;
+pub const WIDTH: i32 = 640;
+pub const HEIGHT: i32 = 480;
 const CANVAS_NUM_PIXELS: u32 = WIDTH * HEIGHT;
 
 pub const Canvas = struct {
